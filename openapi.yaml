@@ -1,0 +1,341 @@
+openapi: 3.0.3
+info:
+  title: Registration API
+  version: 1.0.0
+  description: API для регистрации пользователя и подтверждения email.
+servers:
+  - url: http://localhost:3000
+    description: Local server
+
+tags:
+  - name: Auth
+    description: Регистрация и подтверждение email
+
+security:
+  - BearerAuth: []
+
+paths:
+  /api/v1/auth/register:
+    post:
+      tags:
+        - Auth
+      summary: Регистрация нового пользователя
+      operationId: registerUser
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            examples:
+              default:
+                value:
+                  firstName: Иван
+                  lastName: Иванов
+                  email: ivan@example.com
+                  password: StrongPass123!
+                  confirmPassword: StrongPass123!
+                  acceptTerms: true
+      responses:
+        '201':
+          description: Пользователь создан, требуется подтверждение email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterSuccessResponse'
+              examples:
+                default:
+                  value:
+                    userId: 3f5c4d7c-12ab-4cc4-9c2a-8ed54bdbf401
+                    email: ivan@example.com
+                    status: pending_verification
+                    message: Письмо с подтверждением отправлено
+        '400':
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                validation:
+                  value:
+                    error: validation_error
+                    message: Некорректные данные
+                    details:
+                      - field: password
+                        issue: Пароль должен содержать минимум 8 символов
+        '409':
+          description: Пользователь с таким email уже существует
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                conflict:
+                  value:
+                    error: conflict
+                    message: Пользователь с таким email уже существует
+                    details: []
+        '429':
+          description: Слишком много попыток регистрации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                rateLimit:
+                  value:
+                    error: too_many_requests
+                    message: Слишком много попыток регистрации
+                    details: []
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                serverError:
+                  value:
+                    error: internal_server_error
+                    message: Внутренняя ошибка сервера
+                    details: []
+
+  /api/v1/auth/verify-email:
+    get:
+      tags:
+        - Auth
+      summary: Подтверждение email по токену
+      operationId: verifyEmail
+      security: []
+      parameters:
+        - in: query
+          name: token
+          required: true
+          description: Токен подтверждения из письма
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        '200':
+          description: Email успешно подтвержден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyEmailSuccessResponse'
+              examples:
+                default:
+                  value:
+                    status: verified
+                    message: Email успешно подтвержден
+        '400':
+          description: Токен отсутствует или неверного формата
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                badRequest:
+                  value:
+                    error: bad_request
+                    message: Токен отсутствует или неверного формата
+                    details: []
+        '404':
+          description: Токен не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error: not_found
+                    message: Токен не найден
+                    details: []
+        '410':
+          description: Токен истек
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                gone:
+                  value:
+                    error: token_expired
+                    message: Токен истек
+                    details: []
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                serverError:
+                  value:
+                    error: internal_server_error
+                    message: Внутренняя ошибка сервера
+                    details: []
+
+  /api/v1/users/me:
+    get:
+      tags:
+        - Auth
+      summary: Профиль текущего пользователя
+      description: Пример защищенного endpoint для демонстрации Bearer авторизации в Swagger UI.
+      operationId: getCurrentUser
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Данные текущего пользователя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUserResponse'
+              examples:
+                default:
+                  value:
+                    userId: 3f5c4d7c-12ab-4cc4-9c2a-8ed54bdbf401
+                    email: ivan@example.com
+                    firstName: Иван
+                    lastName: Иванов
+        '401':
+          description: Неавторизован. Отсутствует или невалидный Bearer токен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                unauthorized:
+                  value:
+                    error: unauthorized
+                    message: Требуется Bearer токен
+                    details: []
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                serverError:
+                  value:
+                    error: internal_server_error
+                    message: Внутренняя ошибка сервера
+                    details: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required:
+        - firstName
+        - lastName
+        - email
+        - password
+        - confirmPassword
+        - acceptTerms
+      properties:
+        firstName:
+          type: string
+          minLength: 2
+          maxLength: 50
+        lastName:
+          type: string
+          minLength: 2
+          maxLength: 50
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+          pattern: '^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{8,}$'
+          description: Минимум 8 символов, 1 заглавная, 1 строчная, 1 цифра, 1 спецсимвол
+        confirmPassword:
+          type: string
+        acceptTerms:
+          type: boolean
+          enum: [true]
+
+    RegisterSuccessResponse:
+      type: object
+      required:
+        - userId
+        - email
+        - status
+        - message
+      properties:
+        userId:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        status:
+          type: string
+          enum:
+            - pending_verification
+        message:
+          type: string
+
+    VerifyEmailSuccessResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          enum:
+            - verified
+        message:
+          type: string
+
+    CurrentUserResponse:
+      type: object
+      required:
+        - userId
+        - email
+        - firstName
+        - lastName
+      properties:
+        userId:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+        - details
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              issue:
+                type: string

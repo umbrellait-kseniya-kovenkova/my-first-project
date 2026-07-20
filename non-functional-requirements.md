@@ -1,6 +1,6 @@
 # Нефункциональные требования
 
-[Главная](README.md) | [Требования](requirements.md)
+[Главная](README.md) | [Требования](requirements.md) | [API регистрации](api-registration.md)
 
 ## Для процесса регистрации на сайте
 
